@@ -5,25 +5,14 @@ import fit.se.service.StudentService;
 import fit.se.service.StudentService.StudentStatistics;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.File;
-import java.util.List;
-
-import fit.se.model.Student;
-import fit.se.service.StudentService;
-import fit.se.service.StudentService.StudentStatistics;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
-import java.util.concurrent.Future;
 
 /**
- * Main application frame - Swing GUI
+ * Modern Material Design Main Frame
  */
 public class MainFrame extends JFrame {
     private StudentService service;
@@ -36,7 +25,17 @@ public class MainFrame extends JFrame {
     private JLabel statusLabel;
     private JProgressBar progressBar;
 
-    // Column names
+    // Modern Color Scheme
+    private static final Color PRIMARY_COLOR = new Color(33, 150, 243);      // Blue
+    private static final Color PRIMARY_DARK = new Color(25, 118, 210);
+    private static final Color ACCENT_COLOR = new Color(255, 87, 34);        // Orange
+    private static final Color SUCCESS_COLOR = new Color(76, 175, 80);       // Green
+    private static final Color BACKGROUND = new Color(250, 250, 250);
+    private static final Color CARD_BACKGROUND = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(33, 33, 33);
+    private static final Color TEXT_SECONDARY = new Color(117, 117, 117);
+    private static final Color DIVIDER = new Color(224, 224, 224);
+
     private static final String[] COLUMN_NAMES = {
             "Mã SV", "Họ tên", "Ngày sinh", "Giới tính",
             "Email", "Điện thoại", "Ngành học", "GPA", "Xếp loại"
@@ -49,25 +48,47 @@ public class MainFrame extends JFrame {
     }
 
     private void initComponents() {
-        setTitle("Hệ Thống Quản Lý Sinh Viên");
+        setTitle("🎓 Hệ Thống Quản Lý Sinh Viên");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 700);
+        setSize(1400, 800);
         setLocationRelativeTo(null);
+
+        // Set modern look
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            UIManager.put("Button.arc", 10);
+            UIManager.put("Component.arc", 10);
+            UIManager.put("TextComponent.arc", 10);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Menu Bar
         createMenuBar();
 
-        // Main Panel
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // Main Panel with gradient background
+        JPanel mainPanel = new JPanel(new BorderLayout(15, 15)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                int w = getWidth(), h = getHeight();
+                GradientPaint gp = new GradientPaint(0, 0, BACKGROUND, 0, h, new Color(240, 245, 250));
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, w, h);
+            }
+        };
+        mainPanel.setOpaque(false);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Top Panel - Search
-        mainPanel.add(createSearchPanel(), BorderLayout.NORTH);
+        // Header Panel
+        mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
 
-        // Center Panel - Table
+        // Center Panel with table
         mainPanel.add(createTablePanel(), BorderLayout.CENTER);
 
-        // Bottom Panel - Status
+        // Bottom Panel
         mainPanel.add(createStatusPanel(), BorderLayout.SOUTH);
 
         // Right Panel - Actions
@@ -75,7 +96,6 @@ public class MainFrame extends JFrame {
 
         add(mainPanel);
 
-        // Window closing handler
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -86,68 +106,118 @@ public class MainFrame extends JFrame {
 
     private void createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(CARD_BACKGROUND);
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, DIVIDER));
 
-        // File Menu
-        JMenu fileMenu = new JMenu("File");
-        fileMenu.setMnemonic(KeyEvent.VK_F);
+        JMenu fileMenu = createStyledMenu("📁 File");
 
-        JMenuItem refreshItem = new JMenuItem("Làm mới", KeyEvent.VK_R);
-        refreshItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
+        JMenuItem refreshItem = createStyledMenuItem("🔄 Làm mới", KeyEvent.VK_F5);
         refreshItem.addActionListener(e -> loadStudentData());
 
-        JMenuItem statsItem = new JMenuItem("Thống kê", KeyEvent.VK_S);
+        JMenuItem statsItem = createStyledMenuItem("📊 Thống kê", 0);
         statsItem.addActionListener(e -> showStatistics());
 
-        JMenuItem exitItem = new JMenuItem("Thoát", KeyEvent.VK_X);
+        JMenuItem exportItem = createStyledMenuItem("📤 Xuất Excel", 0);
+        exportItem.addActionListener(e -> JOptionPane.showMessageDialog(this,
+                "Tính năng đang phát triển", "Thông báo", JOptionPane.INFORMATION_MESSAGE));
+
+        JMenuItem exitItem = createStyledMenuItem("🚪 Thoát", KeyEvent.VK_Q);
         exitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
         exitItem.addActionListener(e -> System.exit(0));
 
         fileMenu.add(refreshItem);
         fileMenu.add(statsItem);
+        fileMenu.add(exportItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
 
-        // Help Menu
-        JMenu helpMenu = new JMenu("Help");
-        JMenuItem aboutItem = new JMenuItem("About");
+        JMenu helpMenu = createStyledMenu("❓ Help");
+        JMenuItem aboutItem = createStyledMenuItem("ℹ️ About", 0);
         aboutItem.addActionListener(e -> showAbout());
         helpMenu.add(aboutItem);
 
         menuBar.add(fileMenu);
+        menuBar.add(Box.createHorizontalGlue());
         menuBar.add(helpMenu);
 
         setJMenuBar(menuBar);
     }
 
-    private JPanel createSearchPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Tìm kiếm"));
+    private JMenu createStyledMenu(String text) {
+        JMenu menu = new JMenu(text);
+        menu.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        menu.setForeground(TEXT_PRIMARY);
+        return menu;
+    }
 
-        panel.add(new JLabel("Loại:"));
-        searchTypeCombo = new JComboBox<>(new String[]{"Tên", "Ngành học", "GPA >= "});
+    private JMenuItem createStyledMenuItem(String text, int mnemonic) {
+        JMenuItem item = new JMenuItem(text);
+        item.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        if (mnemonic != 0) item.setMnemonic(mnemonic);
+        return item;
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
+        headerPanel.setOpaque(false);
+
+        // Title Section
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        titlePanel.setOpaque(false);
+
+        JLabel titleLabel = new JLabel("🎓 QUẢN LÝ SINH VIÊN");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(PRIMARY_DARK);
+        titlePanel.add(titleLabel);
+
+        headerPanel.add(titlePanel, BorderLayout.NORTH);
+        headerPanel.add(createSearchPanel(), BorderLayout.CENTER);
+
+        return headerPanel;
+    }
+
+    private JPanel createSearchPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        panel.setOpaque(true);
+        panel.setBackground(CARD_BACKGROUND);
+        panel.setBorder(createModernBorder("🔍 Tìm kiếm nhanh"));
+
+        JLabel typeLabel = new JLabel("Tìm theo:");
+        typeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        typeLabel.setForeground(TEXT_SECONDARY);
+        panel.add(typeLabel);
+
+        searchTypeCombo = new JComboBox<>(new String[]{"Tên", "Ngành học", "GPA >="});
+        searchTypeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        searchTypeCombo.setPreferredSize(new Dimension(120, 35));
+        styleComboBox(searchTypeCombo);
         panel.add(searchTypeCombo);
 
-        searchField = new JTextField(20);
+        searchField = new JTextField(25);
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        searchField.setPreferredSize(new Dimension(300, 35));
+        styleTextField(searchField, "Nhập từ khóa tìm kiếm...");
+        searchField.addActionListener(e -> performSearch());
         panel.add(searchField);
 
-        JButton searchBtn = new JButton("Tìm kiếm");
+        JButton searchBtn = createModernButton("🔍 Tìm", PRIMARY_COLOR, Color.WHITE);
+        searchBtn.setPreferredSize(new Dimension(100, 35));
         searchBtn.addActionListener(e -> performSearch());
         panel.add(searchBtn);
 
-        JButton clearBtn = new JButton("Xóa bộ lọc");
+        JButton clearBtn = createModernButton("✖️ Xóa", TEXT_SECONDARY, Color.WHITE);
+        clearBtn.setPreferredSize(new Dimension(90, 35));
         clearBtn.addActionListener(e -> {
             searchField.setText("");
             loadStudentData();
         });
         panel.add(clearBtn);
 
-        // Enter key support
-        searchField.addActionListener(e -> performSearch());
-
         return panel;
     }
 
     private JScrollPane createTablePanel() {
+        // Custom table model
         tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -156,15 +226,70 @@ public class MainFrame extends JFrame {
         };
 
         studentTable = new JTable(tableModel);
+        studentTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        studentTable.setRowHeight(40);
         studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        studentTable.setRowHeight(25);
-        studentTable.getTableHeader().setReorderingAllowed(false);
+        studentTable.setShowGrid(false);
+        studentTable.setIntercellSpacing(new Dimension(0, 0));
+
+        // Modern table header
+        JTableHeader header = studentTable.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(PRIMARY_COLOR);
+        header.setForeground(Color.WHITE);
+        header.setPreferredSize(new Dimension(header.getWidth(), 45));
+        header.setBorder(BorderFactory.createEmptyBorder());
+
+        // Alternating row colors
+        studentTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                if (isSelected) {
+                    c.setBackground(new Color(227, 242, 253));
+                    c.setForeground(TEXT_PRIMARY);
+                } else {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(250, 250, 250));
+                    c.setForeground(TEXT_PRIMARY);
+                }
+
+                ((JLabel) c).setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+                ((JLabel) c).setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+                // Color code for GPA column
+                if (column == 7 && value != null) {
+                    try {
+                        double gpa = Double.parseDouble(value.toString());
+                        if (gpa >= 3.6) ((JLabel) c).setForeground(new Color(46, 125, 50));
+                        else if (gpa >= 3.2) ((JLabel) c).setForeground(new Color(67, 160, 71));
+                        else if (gpa >= 2.5) ((JLabel) c).setForeground(new Color(251, 140, 0));
+                        else ((JLabel) c).setForeground(new Color(211, 47, 47));
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                // Classification column
+                if (column == 8) {
+                    ((JLabel) c).setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    if (value != null) {
+                        String val = value.toString();
+                        if (val.equals("Xuất sắc")) ((JLabel) c).setForeground(new Color(46, 125, 50));
+                        else if (val.equals("Giỏi")) ((JLabel) c).setForeground(new Color(67, 160, 71));
+                        else if (val.equals("Khá")) ((JLabel) c).setForeground(new Color(251, 140, 0));
+                        else ((JLabel) c).setForeground(new Color(211, 47, 47));
+                    }
+                }
+
+                return c;
+            }
+        });
 
         // Column widths
-        int[] columnWidths = {80, 150, 100, 80, 180, 100, 150, 60, 100};
-        for (int i = 0; i < columnWidths.length; i++) {
-            studentTable.getColumnModel().getColumn(i)
-                    .setPreferredWidth(columnWidths[i]);
+        int[] widths = {90, 160, 110, 90, 200, 110, 160, 70, 110};
+        for (int i = 0; i < widths.length; i++) {
+            studentTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
 
         // Double click to edit
@@ -177,57 +302,72 @@ public class MainFrame extends JFrame {
             }
         });
 
-        return new JScrollPane(studentTable);
+        JScrollPane scrollPane = new JScrollPane(studentTable);
+        scrollPane.setBorder(createModernBorder("📋 Danh sách sinh viên"));
+        scrollPane.getViewport().setBackground(Color.WHITE);
+
+        return scrollPane;
     }
 
     private JPanel createActionPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+        panel.setOpaque(true);
+        panel.setBackground(CARD_BACKGROUND);
+        panel.setBorder(createModernBorder("⚡ Thao tác"));
+        panel.setPreferredSize(new Dimension(180, 0));
 
-        Dimension btnSize = new Dimension(120, 30);
+        Dimension btnSize = new Dimension(160, 45);
+        int spacing = 12;
 
-        JButton addBtn = createButton("Thêm mới", "icons/add.png", btnSize);
+        JButton addBtn = createActionButton("➕ Thêm mới", SUCCESS_COLOR, btnSize);
         addBtn.addActionListener(e -> addStudent());
 
-        JButton editBtn = createButton("Sửa", "icons/edit.png", btnSize);
+        JButton editBtn = createActionButton("✏️ Sửa", PRIMARY_COLOR, btnSize);
         editBtn.addActionListener(e -> editStudent());
 
-        JButton deleteBtn = createButton("Xóa", "icons/delete.png", btnSize);
+        JButton deleteBtn = createActionButton("🗑️ Xóa", ACCENT_COLOR, btnSize);
         deleteBtn.addActionListener(e -> deleteStudent());
 
-        JButton viewBtn = createButton("Xem chi tiết", "icons/view.png", btnSize);
+        JButton viewBtn = createActionButton("👁️ Chi tiết", new Color(156, 39, 176), btnSize);
         viewBtn.addActionListener(e -> viewStudent());
 
+        JButton statsBtn = createActionButton("📊 Thống kê", new Color(255, 152, 0), btnSize);
+        statsBtn.addActionListener(e -> showStatistics());
+
+        panel.add(Box.createVerticalStrut(15));
         panel.add(addBtn);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(Box.createVerticalStrut(spacing));
         panel.add(editBtn);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(Box.createVerticalStrut(spacing));
         panel.add(deleteBtn);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(Box.createVerticalStrut(spacing));
         panel.add(viewBtn);
+        panel.add(Box.createVerticalStrut(spacing));
+        panel.add(statsBtn);
+        panel.add(Box.createVerticalGlue());
 
         return panel;
     }
 
-    private JButton createButton(String text, String iconPath, Dimension size) {
-        JButton button = new JButton(text);
-        button.setMaximumSize(size);
-        button.setMinimumSize(size);
-        button.setPreferredSize(size);
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return button;
-    }
-
     private JPanel createStatusPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(true);
+        panel.setBackground(CARD_BACKGROUND);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(2, 0, 0, 0, DIVIDER),
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)
+        ));
 
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        statusLabel = new JLabel("✅ Sẵn sàng");
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        statusLabel.setForeground(TEXT_SECONDARY);
 
         progressBar = new JProgressBar();
         progressBar.setVisible(false);
         progressBar.setStringPainted(true);
+        progressBar.setPreferredSize(new Dimension(200, 20));
+        progressBar.setForeground(PRIMARY_COLOR);
 
         panel.add(statusLabel, BorderLayout.CENTER);
         panel.add(progressBar, BorderLayout.EAST);
@@ -235,7 +375,105 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
-    // Action methods
+    // Utility methods for styling
+    private Border createModernBorder(String title) {
+        TitledBorder titledBorder = BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(DIVIDER, 1, true),
+                title,
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Segoe UI", Font.BOLD, 14),
+                PRIMARY_DARK
+        );
+        return BorderFactory.createCompoundBorder(
+                titledBorder,
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        );
+    }
+
+    private JButton createModernButton(String text, Color bgColor, Color fgColor) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        button.setForeground(fgColor);
+        button.setBackground(bgColor);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(bgColor.darker());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+
+    private JButton createActionButton(String text, Color color, Dimension size) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setBackground(color);
+        button.setMaximumSize(size);
+        button.setMinimumSize(size);
+        button.setPreferredSize(size);
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(color.darker());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(color);
+            }
+        });
+
+        return button;
+    }
+
+    private void styleTextField(JTextField field, String placeholder) {
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(DIVIDER, 1, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(PRIMARY_COLOR, 2, true),
+                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
+                ));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(DIVIDER, 1, true),
+                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
+                ));
+            }
+        });
+    }
+
+    private void styleComboBox(JComboBox<?> combo) {
+        combo.setBorder(BorderFactory.createLineBorder(DIVIDER, 1, true));
+        combo.setBackground(Color.WHITE);
+    }
+
+    // Action methods (keep existing logic, just update UI feedback)
     private void addStudent() {
         StudentDialog dialog = new StudentDialog(this, service, null);
         dialog.setVisible(true);
@@ -247,9 +485,7 @@ public class MainFrame extends JFrame {
     private void editStudent() {
         int selectedRow = studentTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Vui lòng chọn sinh viên cần sửa!",
-                    "Thông báo", JOptionPane.WARNING_MESSAGE);
+            showModernMessage("⚠️ Vui lòng chọn sinh viên cần sửa!", "warning");
             return;
         }
 
@@ -269,9 +505,7 @@ public class MainFrame extends JFrame {
     private void deleteStudent() {
         int selectedRow = studentTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Vui lòng chọn sinh viên cần xóa!",
-                    "Thông báo", JOptionPane.WARNING_MESSAGE);
+            showModernMessage("⚠️ Vui lòng chọn sinh viên cần xóa!", "warning");
             return;
         }
 
@@ -280,13 +514,13 @@ public class MainFrame extends JFrame {
 
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Bạn có chắc muốn xóa sinh viên:\n" + studentId + " - " + studentName + "?",
-                "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                "⚠️ Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 service.deleteStudent(studentId);
                 loadStudentData();
-                showStatus("Đã xóa sinh viên: " + studentName);
+                showStatus("✅ Đã xóa sinh viên: " + studentName);
             } catch (Exception e) {
                 showError("Lỗi khi xóa sinh viên", e);
             }
@@ -296,9 +530,7 @@ public class MainFrame extends JFrame {
     private void viewStudent() {
         int selectedRow = studentTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Vui lòng chọn sinh viên!",
-                    "Thông báo", JOptionPane.WARNING_MESSAGE);
+            showModernMessage("⚠️ Vui lòng chọn sinh viên!", "warning");
             return;
         }
 
@@ -320,17 +552,16 @@ public class MainFrame extends JFrame {
 
         String searchType = (String) searchTypeCombo.getSelectedItem();
 
-        // Use async search with SwingWorker
         SwingWorker<List<Student>, Void> worker = new SwingWorker<>() {
             @Override
             protected List<Student> doInBackground() throws Exception {
-                showProgress("Đang tìm kiếm...");
+                showProgress("🔍 Đang tìm kiếm...");
 
                 if ("Tên".equals(searchType)) {
                     return service.searchByName(searchText);
                 } else if ("Ngành học".equals(searchType)) {
                     return service.searchByMajor(searchText);
-                } else { // GPA
+                } else {
                     double minGpa = Double.parseDouble(searchText);
                     return service.getTopStudents(minGpa);
                 }
@@ -341,7 +572,7 @@ public class MainFrame extends JFrame {
                 try {
                     List<Student> results = get();
                     updateTable(results);
-                    showStatus("Tìm thấy " + results.size() + " kết quả");
+                    showStatus("✅ Tìm thấy " + results.size() + " kết quả");
                 } catch (Exception e) {
                     showError("Lỗi khi tìm kiếm", e);
                 }
@@ -356,7 +587,7 @@ public class MainFrame extends JFrame {
         SwingWorker<List<Student>, Void> worker = new SwingWorker<>() {
             @Override
             protected List<Student> doInBackground() throws Exception {
-                showProgress("Đang tải dữ liệu...");
+                showProgress("⏳ Đang tải dữ liệu...");
                 return service.getAllStudents();
             }
 
@@ -365,7 +596,7 @@ public class MainFrame extends JFrame {
                 try {
                     List<Student> students = get();
                     updateTable(students);
-                    showStatus("Đã tải " + students.size() + " sinh viên");
+                    showStatus("✅ Đã tải " + students.size() + " sinh viên");
                 } catch (Exception e) {
                     showError("Lỗi khi tải dữ liệu", e);
                 }
@@ -396,10 +627,24 @@ public class MainFrame extends JFrame {
     private void showStatistics() {
         try {
             StudentStatistics stats = service.calculateStatistics();
-            JOptionPane.showMessageDialog(this,
-                    stats.toString(),
-                    "Thống kê sinh viên",
-                    JOptionPane.INFORMATION_MESSAGE);
+            String message = String.format(
+                    "<html><body style='width: 350px; font-family: Segoe UI;'>" +
+                            "<h2 style='color: #1976D2; margin-bottom: 15px;'>📊 Thống kê sinh viên</h2>" +
+                            "<table style='width: 100%%; border-collapse: collapse;'>" +
+                            "<tr><td style='padding: 8px; background: #E3F2FD;'><b>Tổng số sinh viên:</b></td><td style='padding: 8px;'>%d</td></tr>" +
+                            "<tr><td style='padding: 8px;'><b>GPA trung bình:</b></td><td style='padding: 8px;'>%.2f</td></tr>" +
+                            "<tr><td style='padding: 8px; background: #E3F2FD;'><b>GPA cao nhất:</b></td><td style='padding: 8px; color: #4CAF50;'><b>%.2f</b></td></tr>" +
+                            "<tr><td style='padding: 8px;'><b>GPA thấp nhất:</b></td><td style='padding: 8px; color: #F44336;'>%.2f</td></tr>" +
+                            "<tr><td style='padding: 8px; background: #E3F2FD;'><b>Sinh viên nam:</b></td><td style='padding: 8px;'>%d</td></tr>" +
+                            "<tr><td style='padding: 8px;'><b>Sinh viên nữ:</b></td><td style='padding: 8px;'>%d</td></tr>" +
+                            "</table></body></html>",
+                    stats.getTotalStudents(), stats.getAverageGpa(),
+                    stats.getMaxGpa(), stats.getMinGpa(),
+                    stats.getMaleCount(), stats.getFemaleCount()
+            );
+
+            JOptionPane.showMessageDialog(this, message,
+                    "Thống kê", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception e) {
             showError("Lỗi khi tính toán thống kê", e);
         }
@@ -407,9 +652,20 @@ public class MainFrame extends JFrame {
 
     private void showStudentDetails(Student s) {
         String details = String.format(
-                "Mã SV: %s\nHọ tên: %s\nNgày sinh: %s (Tuổi: %d)\n" +
-                        "Giới tính: %s\nEmail: %s\nĐiện thoại: %s\n" +
-                        "Địa chỉ: %s\nNgành học: %s\nGPA: %.2f\nXếp loại: %s",
+                "<html><body style='width: 400px; font-family: Segoe UI;'>" +
+                        "<h2 style='color: #1976D2; margin-bottom: 15px;'>👤 Chi tiết sinh viên</h2>" +
+                        "<table style='width: 100%%;'>" +
+                        "<tr><td style='padding: 5px;'><b>Mã SV:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Họ tên:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Ngày sinh:</b></td><td style='padding: 5px;'>%s (Tuổi: %d)</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Giới tính:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Email:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Điện thoại:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Địa chỉ:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Ngành học:</b></td><td style='padding: 5px;'>%s</td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>GPA:</b></td><td style='padding: 5px; color: #4CAF50;'><b>%.2f</b></td></tr>" +
+                        "<tr><td style='padding: 5px;'><b>Xếp loại:</b></td><td style='padding: 5px;'><b>%s</b></td></tr>" +
+                        "</table></body></html>",
                 s.getId(), s.getFullName(), s.getFormattedDateOfBirth(),
                 s.getAge(), s.getGender().getDisplayName(), s.getEmail(),
                 s.getPhone(), s.getAddress(), s.getMajor(),
@@ -420,20 +676,30 @@ public class MainFrame extends JFrame {
                 "Chi tiết sinh viên", JOptionPane.INFORMATION_MESSAGE);
     }
 
+
     private void showAbout() {
-        JOptionPane.showMessageDialog(this,
-                "Hệ Thống Quản Lý Sinh Viên\n" +
-                        "Version 1.0\n\n" +
-                        "Công nghệ:\n" +
-                        "- Java Swing GUI\n" +
-                        "- File & Database (MariaDB/MySQL)\n" +
-                        "- Multi-threading\n\n" +
-                        "© 2024",
-                "About",
-                JOptionPane.INFORMATION_MESSAGE);
+        String about = "<html><body style='font-family: Arial; font-size: 12px;'>"
+                + "<h2 style='color:#2e7d32;'>Student Management System</h2>"
+                + "<p>This application is built using <b>Java Swing</b>.</p>"
+                + "<p>Features include:</p>"
+                + "<ul>"
+                + "<li>Add, Update, Delete Students</li>"
+                + "<li>Search Student Information</li>"
+                + "<li>Modern UI with Material Design style</li>"
+                + "</ul>"
+                + "<p style='margin-top:10px;'>Developer: <b>Cao Văn Bảo</b></p>"
+                + "<p>Version: 2.0.0</p>"
+                + "</body></html>";
+
+        JOptionPane.showMessageDialog(this, about, "About", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // Utility methods
+
+    private void showModernMessage(String message, String type) {
+        int messageType = type.equals("warning") ? JOptionPane.WARNING_MESSAGE : JOptionPane.INFORMATION_MESSAGE;
+        JOptionPane.showMessageDialog(this, message, "Thông báo", messageType);
+    }
+
     private void showStatus(String message) {
         statusLabel.setText(message);
     }
@@ -450,10 +716,14 @@ public class MainFrame extends JFrame {
     }
 
     private void showError(String message, Exception e) {
-        JOptionPane.showMessageDialog(this,
-                message + ":\n" + e.getMessage(),
-                "Lỗi",
-                JOptionPane.ERROR_MESSAGE);
+        String errorMsg = String.format(
+                "<html><body style='width: 350px;'>" +
+                        "<h3 style='color: #F44336;'>❌ %s</h3>" +
+                        "<p style='color: #666;'>%s</p>" +
+                        "</body></html>",
+                message, e.getMessage()
+        );
+        JOptionPane.showMessageDialog(this, errorMsg, "Lỗi", JOptionPane.ERROR_MESSAGE);
         e.printStackTrace();
     }
 }
