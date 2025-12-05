@@ -320,4 +320,4 @@ Nếu có thắc mắc hoặc báo lỗi, vui lòng tạo issue hoặc liên h�
 
 **License**: MIT  
 **Version**: 1.0  
-**Last Updated**: December 2024
+**Last Updated**: December 2025
