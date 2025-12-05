@@ -30,3 +30,47 @@ INSERT INTO students (id, full_name, date_of_birth, gender, email, phone, addres
 CREATE INDEX idx_name ON students(full_name);
 CREATE INDEX idx_major ON students(major);
 CREATE INDEX idx_gpa ON students(gpa);
+
+CREATE TABLE IF NOT EXISTS grades (
+                                      id INT PRIMARY KEY AUTO_INCREMENT,
+                                      student_id VARCHAR(20) NOT NULL,
+                                      course_code VARCHAR(20) NOT NULL,
+                                      course_name VARCHAR(200) NOT NULL,
+                                      credits INT NOT NULL,
+                                      midterm_score DECIMAL(4,2) DEFAULT 0,
+                                      final_score DECIMAL(4,2) DEFAULT 0,
+                                      practice_score DECIMAL(4,2) DEFAULT 0,
+                                      total_score DECIMAL(4,2) DEFAULT 0,
+                                      letter_grade VARCHAR(5),
+                                      exam_date DATE,
+                                      semester VARCHAR(20),
+                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                                      UNIQUE KEY unique_student_course (student_id, course_code, semester)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_student_grades ON grades(student_id);
+CREATE INDEX idx_course_grades ON grades(course_code);
+CREATE INDEX idx_semester_grades ON grades(semester);
+
+CREATE TABLE IF NOT EXISTS users (
+                                     id INT PRIMARY KEY AUTO_INCREMENT,
+                                     username VARCHAR(50) UNIQUE NOT NULL,
+                                     password_hash VARCHAR(255) NOT NULL,
+                                     full_name VARCHAR(100) NOT NULL,
+                                     email VARCHAR(100),
+                                     role ENUM('ADMIN', 'TEACHER', 'STUDENT') NOT NULL,
+                                     active BOOLEAN DEFAULT TRUE,
+                                     last_login TIMESTAMP NULL,
+                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Default admin account (username: admin, password: admin123)
+INSERT INTO users (username, password_hash, full_name, role) VALUES
+    ('admin', '$2a$10$rVQ5YC.8mIqK6PqLqf8zBeCk4VPvqYGLxJDmxIlKZ0q4BjZBmZEkG',
+     'Administrator', 'ADMIN');
+
+CREATE INDEX idx_username ON users(username);
+CREATE INDEX idx_role ON users(role);

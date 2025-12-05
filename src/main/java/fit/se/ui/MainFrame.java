@@ -3,6 +3,8 @@ package fit.se.ui;
 import fit.se.model.Student;
 import fit.se.service.StudentService;
 import fit.se.service.StudentService.StudentStatistics;
+import fit.se.util.ExcelUtils;
+import fit.se.util.PDFReportGenerator;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -10,6 +12,8 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
+
+import static fit.se.util.ExcelUtils.importFromExcel;
 
 /**
  * Modern Material Design Main Frame
@@ -117,9 +121,26 @@ public class MainFrame extends JFrame {
         JMenuItem statsItem = createStyledMenuItem("📊 Thống kê", 0);
         statsItem.addActionListener(e -> showStatistics());
 
-        JMenuItem exportItem = createStyledMenuItem("📤 Xuất Excel", 0);
-        exportItem.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Tính năng đang phát triển", "Thông báo", JOptionPane.INFORMATION_MESSAGE));
+        // NEW: Export submenu
+        JMenu exportMenu = new JMenu("📤 Xuất dữ liệu");
+        exportMenu.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JMenuItem exportExcelItem = createStyledMenuItem("📊 Xuất Excel", 0);
+        exportExcelItem.addActionListener(e -> exportToExcel());
+
+        JMenuItem exportPdfItem = createStyledMenuItem("📄 Xuất PDF", 0);
+        exportPdfItem.addActionListener(e -> exportToPdf());
+
+        JMenuItem exportStatsItem = createStyledMenuItem("📈 Báo cáo thống kê", 0);
+        exportStatsItem.addActionListener(e -> exportStatisticsPdf());
+
+        exportMenu.add(exportExcelItem);
+        exportMenu.add(exportPdfItem);
+        exportMenu.add(exportStatsItem);
+
+        // NEW: Import item
+        JMenuItem importItem = createStyledMenuItem("📥 Nhập từ Excel", 0);
+        importItem.addActionListener(e -> importFromExcel());
 
         JMenuItem exitItem = createStyledMenuItem("🚪 Thoát", KeyEvent.VK_Q);
         exitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
@@ -127,9 +148,15 @@ public class MainFrame extends JFrame {
 
         fileMenu.add(refreshItem);
         fileMenu.add(statsItem);
-        fileMenu.add(exportItem);
+        fileMenu.addSeparator();
+        fileMenu.add(exportMenu);
+        fileMenu.add(importItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
+
+        menuBar.add(fileMenu);
+        menuBar.add(Box.createHorizontalGlue());
+
 
         JMenu helpMenu = createStyledMenu("❓ Help");
         JMenuItem aboutItem = createStyledMenuItem("ℹ️ About", 0);
@@ -725,5 +752,195 @@ public class MainFrame extends JFrame {
         );
         JOptionPane.showMessageDialog(this, errorMsg, "Lỗi", JOptionPane.ERROR_MESSAGE);
         e.printStackTrace();
+    }
+
+    private void exportToExcel() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Xuất danh sách sinh viên");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Excel Files (*.xlsx)", "xlsx"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            if (!filePath.endsWith(".xlsx")) {
+                filePath += ".xlsx";
+            }
+
+            String finalFilePath = filePath;
+            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    showProgress("📤 Đang xuất Excel...");
+                    List<Student> students = service.getAllStudents();
+                    ExcelUtils.exportToExcel(students, finalFilePath);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        showStatus("✅ Đã xuất " + finalFilePath);
+                        int choice = JOptionPane.showConfirmDialog(MainFrame.this,
+                                "Xuất Excel thành công!\nBạn có muốn mở file?",
+                                "Thành công", JOptionPane.YES_NO_OPTION);
+
+                        if (choice == JOptionPane.YES_OPTION) {
+                            Desktop.getDesktop().open(new java.io.File(finalFilePath));
+                        }
+                    } catch (Exception e) {
+                        showError("Lỗi khi xuất Excel", e);
+                    }
+                    hideProgress();
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    // NEW METHODS: Import from Excel
+    private void importFromExcel() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Nhập danh sách sinh viên");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Excel Files (*.xlsx)", "xlsx"));
+
+        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "Nhập dữ liệu từ Excel sẽ thêm các sinh viên mới.\n" +
+                            "Sinh viên trùng mã sẽ bị bỏ qua.\nTiếp tục?",
+                    "Xác nhận", JOptionPane.YES_NO_OPTION);
+
+            if (choice != JOptionPane.YES_OPTION) return;
+
+            SwingWorker<Integer, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Integer doInBackground() throws Exception {
+                    showProgress("📥 Đang nhập Excel...");
+                    List<Student> students = ExcelUtils.importFromExcel(filePath);
+
+                    int successCount = 0;
+                    for (Student student : students) {
+                        try {
+                            if (service.addStudent(student)) {
+                                successCount++;
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Skip student " + student.getId() + ": " + e.getMessage());
+                        }
+                    }
+                    return successCount;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        int count = get();
+                        loadStudentData();
+                        showStatus("✅ Đã nhập thành công " + count + " sinh viên");
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                                "Nhập thành công " + count + " sinh viên!",
+                                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception e) {
+                        showError("Lỗi khi nhập Excel", e);
+                    }
+                    hideProgress();
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    // NEW METHODS: Export to PDF
+    private void exportToPdf() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Xuất danh sách PDF");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "PDF Files (*.pdf)", "pdf"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            if (!filePath.endsWith(".pdf")) {
+                filePath += ".pdf";
+            }
+
+            String finalFilePath = filePath;
+            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    showProgress("📄 Đang tạo PDF...");
+                    List<Student> students = service.getAllStudents();
+                    PDFReportGenerator.generateStudentListReport(students, finalFilePath);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        showStatus("✅ Đã xuất " + finalFilePath);
+                        int choice = JOptionPane.showConfirmDialog(MainFrame.this,
+                                "Xuất PDF thành công!\nBạn có muốn mở file?",
+                                "Thành công", JOptionPane.YES_NO_OPTION);
+
+                        if (choice == JOptionPane.YES_OPTION) {
+                            Desktop.getDesktop().open(new java.io.File(finalFilePath));
+                        }
+                    } catch (Exception e) {
+                        showError("Lỗi khi xuất PDF", e);
+                    }
+                    hideProgress();
+                }
+            };
+            worker.execute();
+        }
+    }
+
+    // NEW METHODS: Export Statistics PDF
+    private void exportStatisticsPdf() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Xuất báo cáo thống kê");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "PDF Files (*.pdf)", "pdf"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            if (!filePath.endsWith(".pdf")) {
+                filePath += ".pdf";
+            }
+
+            String finalFilePath = filePath;
+            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    showProgress("📊 Đang tạo báo cáo...");
+                    StudentStatistics stats = service.calculateStatistics();
+                    List<Student> students = service.getAllStudents();
+                    PDFReportGenerator.generateStatisticsReport(stats, students, finalFilePath);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        showStatus("✅ Đã xuất báo cáo " + finalFilePath);
+                        int choice = JOptionPane.showConfirmDialog(MainFrame.this,
+                                "Xuất báo cáo thành công!\nBạn có muốn mở file?",
+                                "Thành công", JOptionPane.YES_NO_OPTION);
+
+                        if (choice == JOptionPane.YES_OPTION) {
+                            Desktop.getDesktop().open(new java.io.File(finalFilePath));
+                        }
+                    } catch (Exception e) {
+                        showError("Lỗi khi xuất báo cáo", e);
+                    }
+                    hideProgress();
+                }
+            };
+            worker.execute();
+        }
     }
 }
